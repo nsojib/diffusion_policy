@@ -23,12 +23,25 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.video_recoder = video_recoder
 
         self.step_count = 0
+        self.kwargs = None 
+
+    def set_kwargs(self, **kwargs):
+        self.kwargs= kwargs
 
     def reset(self, **kwargs):
         obs = super().reset(**kwargs)
         self.frames = list()
         self.step_count = 1
         self.video_recoder.stop()
+
+        # print(f"video recording wrapper reset kwargs: {self.kwargs} {self.file_path}")
+        if self.file_path is not None and self.kwargs is not None:
+            if 'epoch' in self.kwargs:
+                file_path_without_ext = self.file_path.split('.')[0]
+                file_path_with_ext = f"{file_path_without_ext}_{self.kwargs['epoch']}.mp4"
+                self.file_path = file_path_with_ext
+                # print(f"video recording wrapper reset file_path: {self.file_path}")
+
         return obs
     
     def step(self, action):

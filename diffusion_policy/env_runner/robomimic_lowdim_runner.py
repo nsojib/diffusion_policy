@@ -162,7 +162,7 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                     env.env.file_path = None
                     if enable_render:
                         filename = pathlib.Path(output_dir).joinpath(
-                            'media', wv.util.generate_id() + ".mp4")
+                            'media', wv.util.generate_id() + "_train.mp4")
                         filename.parent.mkdir(parents=False, exist_ok=True)
                         filename = str(filename)
                         env.env.file_path = filename
@@ -189,7 +189,7 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                 env.env.file_path = None
                 if enable_render:
                     filename = pathlib.Path(output_dir).joinpath(
-                        'media', wv.util.generate_id() + ".mp4")
+                        'media', wv.util.generate_id() + "_test.mp4")
                     filename.parent.mkdir(parents=False, exist_ok=True)
                     filename = str(filename)
                     env.env.file_path = filename
@@ -225,7 +225,7 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
         self.abs_action = abs_action
         self.tqdm_interval_sec = tqdm_interval_sec
 
-    def run(self, policy: BaseLowdimPolicy):
+    def run(self, policy: BaseLowdimPolicy, kwargs=None):
         device = policy.device
         dtype = policy.dtype
         env = self.env
@@ -257,7 +257,7 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                 args_list=[(x,) for x in this_init_fns])
 
             # start rollout
-            obs = env.reset()
+            obs = env.reset(kwargs)  #ns added.
             past_action = None
             policy.reset()
 
