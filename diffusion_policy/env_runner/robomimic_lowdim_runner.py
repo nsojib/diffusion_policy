@@ -225,7 +225,7 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
         self.abs_action = abs_action
         self.tqdm_interval_sec = tqdm_interval_sec
 
-    def run(self, policy: BaseLowdimPolicy, kwargs=None):
+    def run(self, policy: BaseLowdimPolicy, kwargs={}):
         device = policy.device
         dtype = policy.dtype
         env = self.env
