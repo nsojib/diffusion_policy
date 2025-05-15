@@ -167,6 +167,8 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                         filename = str(filename)
                         env.env.file_path = filename
 
+                    # env.env.traj_save_path = pathlib.Path(output_dir).joinpath('trajs', wv.util.generate_id())
+                    env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                     # switch to init_state reset
                     assert isinstance(env.env.env, RobomimicLowdimWrapper)
                     env.env.env.init_state = init_state
@@ -194,6 +196,8 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                     filename = str(filename)
                     env.env.file_path = filename
 
+                # env.env.traj_save_path = pathlib.Path(output_dir).joinpath('trajs', wv.util.generate_id())
+                env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                 # switch to seed reset
                 assert isinstance(env.env.env, RobomimicLowdimWrapper)
                 env.env.env.init_state = None

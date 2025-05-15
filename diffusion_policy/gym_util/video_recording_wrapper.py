@@ -1,6 +1,9 @@
 import gym
 import numpy as np
 from diffusion_policy.real_world.video_recorder import VideoRecorder
+import time 
+import os 
+from pathlib import Path
 
 class VideoRecordingWrapper(gym.Wrapper):
     def __init__(self, 
@@ -23,16 +26,64 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.video_recoder = video_recoder
 
         self.step_count = 0
-        self.kwargs = None 
+        self.kwargs = {}  
+        self.traj_save_path=""
+        
 
     def set_kwargs(self, **kwargs):
-        self.kwargs= kwargs
+        self.kwargs= kwargs 
+
+        dirpath = self.traj_save_path.parent
+        # print('--------dirpath:', dirpath)
+ 
+        if 'epoch' in self.kwargs and 'save_rollout' in self.kwargs:
+            epoch=self.kwargs['epoch']
+            is_save_rollout=self.kwargs['save_rollout']
+            if not is_save_rollout:
+                # print(f"not save rollout, epoch: {epoch}")
+                return
+            
+            dirpath = dirpath / f"epoch_{epoch}"
+            if not os.path.exists(dirpath):
+                try:
+                    os.makedirs(dirpath)
+                    # print(f"create directory: {dirpath}")
+                except OSError as e:
+                    # print(f"Error creating directory {dirpath}: {e}")
+                    pass 
+
+    def set_traj_save_path(self, traj_save_path):
+        self.traj_save_path=traj_save_path
+        # print(f"set traj save path: {self.traj_save_path}=======") 
+
+
+
+    def stop_now(self):
+        # print('--------stop now signal received--------')
+        if len(self.traj)>0: 
+            if 'epoch' in self.kwargs and 'save_rollout' in self.kwargs:
+                epoch=self.kwargs['epoch']
+                is_save_rollout=self.kwargs['save_rollout']
+                if not is_save_rollout:
+                    # print(f"not save rollout, epoch: {epoch}")
+                    return
+                len_sa=len(self.traj['actions']) 
+
+                dirpath = self.traj_save_path.parent / f"epoch_{epoch}"
+                rname = self.traj_save_path.name
+                sa_filename = dirpath / f"rollout_{rname}_{len_sa}.npy"
+                # print(f"save sa to: {sa_filename}") 
+                np.save(sa_filename, self.traj)
+
 
     def reset(self, **kwargs):
         obs = super().reset(**kwargs)
         self.frames = list()
         self.step_count = 1
         self.video_recoder.stop()
+ 
+        state_dict = self.env.env.get_state()
+        self.traj = dict(actions=[], rewards=[], dones=[], states=[], initial_state_dict=state_dict)
 
         # print(f"video recording wrapper reset kwargs: {self.kwargs} {self.file_path}")
         if self.file_path is not None and self.kwargs is not None:
@@ -44,8 +95,24 @@ class VideoRecordingWrapper(gym.Wrapper):
 
         return obs
     
+    # obs, reward, done, info = env.step(env_action)
     def step(self, action):
+        state_dict = self.env.env.get_state()
+        sa=(state_dict['states'], action)
+         
+
+        
+        self.traj['states'].append(state_dict['states'])
+        self.traj['actions'].append(action)
+
         result = super().step(action)
+
+        self.traj['rewards'].append(result[1])
+        self.traj['dones'].append(result[2])
+
+        if result[2]:
+            print(f'----------end of episode-------{self.kwargs} {self.file_path}---')
+
         self.step_count += 1
         if self.file_path is not None \
             and ((self.step_count % self.steps_per_render) == 0):
