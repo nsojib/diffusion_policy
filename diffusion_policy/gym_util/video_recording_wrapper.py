@@ -89,7 +89,7 @@ class VideoRecordingWrapper(gym.Wrapper):
         if self.file_path is not None and self.kwargs is not None:
             if 'epoch' in self.kwargs:
                 file_path_without_ext = self.file_path.split('.mp4')[0] 
-                file_path_with_ext = f"epoch_{self.kwargs['epoch']}_{file_path_without_ext}.mp4"
+                file_path_with_ext = f"{file_path_without_ext}_epoch_{self.kwargs['epoch']}.mp4"
                 self.file_path = file_path_with_ext
                 # print(f"video recording wrapper reset file_path: {self.file_path}")
 
