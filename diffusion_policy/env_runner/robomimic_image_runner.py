@@ -179,6 +179,7 @@ class RobomimicImageRunner(BaseImageRunner):
                         filename = str(filename)
                         env.env.file_path = filename
 
+                    env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                     # switch to init_state reset
                     assert isinstance(env.env.env, RobomimicImageWrapper)
                     env.env.env.init_state = init_state
@@ -206,6 +207,7 @@ class RobomimicImageRunner(BaseImageRunner):
                     filename = str(filename)
                     env.env.file_path = filename
 
+                env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                 # switch to seed reset
                 assert isinstance(env.env.env, RobomimicImageWrapper)
                 env.env.env.init_state = None
@@ -267,7 +269,7 @@ class RobomimicImageRunner(BaseImageRunner):
                 args_list=[(x,) for x in this_init_fns])
 
             # start rollout
-            obs = env.reset()
+            obs = env.reset(kwargs)  #ns added.
             past_action = None
             policy.reset()
 

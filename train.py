@@ -29,7 +29,8 @@ def main(cfg: OmegaConf):
 
     cls = hydra.utils.get_class(cfg._target_)
     workspace: BaseWorkspace = cls(cfg)
-    workspace.run()
+    # workspace.run()
+    workspace.run(save_rollout=True)
 
 if __name__ == "__main__":
     main()

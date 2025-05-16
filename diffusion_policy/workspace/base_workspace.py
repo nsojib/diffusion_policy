@@ -26,7 +26,7 @@ class BaseWorkspace:
             output_dir = HydraConfig.get().runtime.output_dir
         return output_dir
     
-    def run(self):
+    def run(self, save_rollout=False):
         """
         Create any resource shouldn't be serialized as local variables
         """
