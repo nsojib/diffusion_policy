@@ -321,7 +321,7 @@ class RobomimicImageRunner(BaseImageRunner):
             all_video_paths[this_global_slice] = env.render()[this_local_slice]
             all_rewards[this_global_slice] = env.call('get_attr', 'reward')[this_local_slice]
         # clear out video buffer
-        _ = env.reset()
+        _ = env.reset(kwargs={})
         
         # log
         max_rewards = collections.defaultdict(list)
