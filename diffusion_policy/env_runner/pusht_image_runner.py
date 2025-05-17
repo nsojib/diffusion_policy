@@ -82,11 +82,12 @@ class PushTImageRunner(BaseImageRunner):
                 env.env.file_path = None
                 if enable_render:
                     filename = pathlib.Path(output_dir).joinpath(
-                        'media', wv.util.generate_id() + ".mp4")
+                        'media', wv.util.generate_id() + "_train.mp4")
                     filename.parent.mkdir(parents=False, exist_ok=True)
                     filename = str(filename)
                     env.env.file_path = filename
 
+                env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                 # set seed
                 assert isinstance(env, MultiStepWrapper)
                 env.seed(seed)
@@ -108,11 +109,12 @@ class PushTImageRunner(BaseImageRunner):
                 env.env.file_path = None
                 if enable_render:
                     filename = pathlib.Path(output_dir).joinpath(
-                        'media', wv.util.generate_id() + ".mp4")
+                        'media', wv.util.generate_id() + "_test.mp4")
                     filename.parent.mkdir(parents=False, exist_ok=True)
                     filename = str(filename)
                     env.env.file_path = filename
 
+                env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                 # set seed
                 assert isinstance(env, MultiStepWrapper)
                 env.seed(seed)
@@ -142,7 +144,7 @@ class PushTImageRunner(BaseImageRunner):
         self.max_steps = max_steps
         self.tqdm_interval_sec = tqdm_interval_sec
     
-    def run(self, policy: BaseImagePolicy):
+    def run(self, policy: BaseImagePolicy, kwargs={}):
         device = policy.device
         dtype = policy.dtype
         env = self.env
@@ -174,7 +176,7 @@ class PushTImageRunner(BaseImageRunner):
                 args_list=[(x,) for x in this_init_fns])
 
             # start rollout
-            obs = env.reset()
+            obs = env.reset(kwargs)  #ns added.
             past_action = None
             policy.reset()
 
