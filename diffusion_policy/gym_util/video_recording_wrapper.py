@@ -4,6 +4,7 @@ from diffusion_policy.real_world.video_recorder import VideoRecorder
 import time 
 import os 
 from pathlib import Path
+import diffusion_policy
 
 class VideoRecordingWrapper(gym.Wrapper):
     def __init__(self, 
@@ -28,6 +29,7 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.step_count = 0
         self.kwargs = {}  
         self.traj_save_path=""
+        self.is_save_rollout=False
         
 
     def set_kwargs(self, **kwargs):
@@ -38,8 +40,8 @@ class VideoRecordingWrapper(gym.Wrapper):
  
         if 'epoch' in self.kwargs and 'save_rollout' in self.kwargs:
             epoch=self.kwargs['epoch']
-            is_save_rollout=self.kwargs['save_rollout']
-            if not is_save_rollout:
+            self.is_save_rollout=self.kwargs['save_rollout']
+            if not self.is_save_rollout:
                 # print(f"not save rollout, epoch: {epoch}")
                 return
             
@@ -61,7 +63,7 @@ class VideoRecordingWrapper(gym.Wrapper):
     def stop_now(self):
         # print('--------stop now signal received--------')
         if len(self.traj)>0: 
-            if 'epoch' in self.kwargs and 'save_rollout' in self.kwargs:
+            if 'epoch' in self.kwargs and self.is_save_rollout:
                 epoch=self.kwargs['epoch']
                 is_save_rollout=self.kwargs['save_rollout']
                 if not is_save_rollout:
@@ -82,7 +84,10 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.step_count = 1
         self.video_recoder.stop()
  
-        state_dict = self.env.env.get_state()
+        if isinstance(self.env, diffusion_policy.env.pusht.pusht_env.PushTEnv):
+            state_dict = {'states': obs}
+        else:
+            state_dict = self.env.env.get_state()
         self.traj = dict(actions=[], rewards=[], dones=[], states=[], initial_state_dict=state_dict)
 
         # print(f"video recording wrapper reset kwargs: {self.kwargs} {self.file_path}")
@@ -97,19 +102,25 @@ class VideoRecordingWrapper(gym.Wrapper):
     
     # obs, reward, done, info = env.step(env_action)
     def step(self, action):
-        state_dict = self.env.env.get_state()
-        sa=(state_dict['states'], action)
-         
 
-        
-        self.traj['states'].append(state_dict['states'])
-        self.traj['actions'].append(action)
+        if self.is_save_rollout:
+            if isinstance(self.env, diffusion_policy.env.pusht.pusht_env.PushTEnv):
+                obs = self.env._get_obs()
+                state_dict = {'states': obs}
+            else:
+                state_dict = self.env.env.get_state()
+
+            # state_dict = self.env.env.get_state() 
+
+            self.traj['states'].append(state_dict['states'])
+            self.traj['actions'].append(action)
 
         result = super().step(action)
 
-        self.traj['rewards'].append(result[1])
-        self.traj['dones'].append(result[2])
-
+        if self.is_save_rollout:
+            self.traj['rewards'].append(result[1])
+            self.traj['dones'].append(result[2])
+            
         if result[2]:
             print(f'----------end of episode-------{self.kwargs} {self.file_path}---')
 
