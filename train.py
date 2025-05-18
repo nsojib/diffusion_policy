@@ -27,15 +27,39 @@ def main(cfg: OmegaConf):
     # will use the same time.
     OmegaConf.resolve(cfg)
 
+    save_rollout = False
+    if hasattr(cfg, 'save_rollout'):  
+        save_rollout = cfg.save_rollout 
+    print("save_rollout", save_rollout)
+
     cls = hydra.utils.get_class(cfg._target_)
     workspace: BaseWorkspace = cls(cfg)
     # workspace.run()
-    workspace.run(save_rollout=True)
+    workspace.run(save_rollout=save_rollout)
 
 if __name__ == "__main__":
     main()
 
+
+# python train.py --config-dir="configs" \
+#     --config-name=image_pusht_diffusion_policy_cnn.yaml \
+#     training.seed=42 \
+#     training.device=cuda:0 \
+#     hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}'\
+#     checkpoint.topk.k=20\
+#     training.num_epochs=400 \
+#     training.checkpoint_every=20 \
+#     training.rollout_every=20 \
+#     +save_rollout=true
+
+
+
 # python train.py --config-dir=. --config-name=image_pusht_diffusion_policy_cnn.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}'
+
+
+# python train.py --config-dir=. --config-name=image_pusht_diffusion_policy_cnn.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}' +save_rollout=true
+
+
 
 
 # python train.py --config-dir=. --config-name=config_lowdim_lift_mh.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}'
