@@ -30,7 +30,7 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.kwargs = {}  
         self.traj_save_path=""
         self.is_save_rollout=False
-        
+        self.is_pusht_env=False
 
     def set_kwargs(self, **kwargs):
         self.kwargs= kwargs 
@@ -84,7 +84,12 @@ class VideoRecordingWrapper(gym.Wrapper):
         self.step_count = 1
         self.video_recoder.stop()
  
-        if isinstance(self.env, diffusion_policy.env.pusht.pusht_env.PushTEnv):
+        if str(self.env.__class__).find('robomimic') != -1:
+            self.is_pusht_env=False
+        else:
+            self.is_pusht_env=True
+
+        if self.is_pusht_env:
             state_dict = {'states': obs}
         else:
             state_dict = self.env.env.get_state()
@@ -104,7 +109,7 @@ class VideoRecordingWrapper(gym.Wrapper):
     def step(self, action):
 
         if self.is_save_rollout:
-            if isinstance(self.env, diffusion_policy.env.pusht.pusht_env.PushTEnv):
+            if self.is_pusht_env:
                 obs = self.env._get_obs()
                 state_dict = {'states': obs}
             else:
