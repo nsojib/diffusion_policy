@@ -23,7 +23,8 @@ from diffusion_policy.workspace.base_workspace import BaseWorkspace
 @click.option('-o', '--output_dir', required=True)
 @click.option('-d', '--device', default='cuda:0')
 @click.option('-s', '--seed', default=None, type=int)
-def main(checkpoint, output_dir, device, seed):
+@click.option('-save_rollout', '--save_rollout', default=False, is_flag=True)
+def main(checkpoint, output_dir, device, seed, save_rollout):
     if os.path.exists(output_dir):
         click.confirm(f"Output path {output_dir} already exists! Overwrite?", abort=True)
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -53,7 +54,10 @@ def main(checkpoint, output_dir, device, seed):
     env_runner = hydra.utils.instantiate(
         cfg.task.env_runner,
         output_dir=output_dir)
-    runner_log = env_runner.run(policy)
+    
+
+    kwargs={'epoch':111111, 'save_rollout':save_rollout}
+    runner_log = env_runner.run(policy, kwargs=kwargs)
     
     # dump log to json
     json_log = dict()
