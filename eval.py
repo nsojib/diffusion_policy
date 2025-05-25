@@ -43,8 +43,14 @@ def main(checkpoint, output_dir, device, seed, save_rollout):
     
     # get policy from workspace
     policy = workspace.model
-    if cfg.training.use_ema:
-        policy = workspace.ema_model
+
+    if hasattr(cfg.training, "use_ema"):
+        if cfg.training.use_ema:
+            policy = workspace.ema_model
+    else:
+        # print('not exist')
+        pass
+
     
     device = torch.device(device)
     policy.to(device)

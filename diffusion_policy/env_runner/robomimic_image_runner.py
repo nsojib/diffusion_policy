@@ -165,8 +165,11 @@ class RobomimicImageRunner(BaseImageRunner):
         regular_mode_not_inf=True # True =regular mode, False = inferernce mode with given init_states
         if init_states is not None:
             regular_mode_not_inf=False
-
-            n_envs = len(init_states)
+            if n_envs is None:
+                n_envs = len(init_states)
+            if len(init_states) < n_envs:
+                n_envs = len(init_states)
+            # n_envs = len(init_states)
             env_fns = [env_fn] * n_envs
 
         print(f'regular_mode_not_inf: {regular_mode_not_inf}--------------------')
