@@ -1,6 +1,18 @@
 """
 Usage:
 python eval.py --checkpoint data/image/pusht/diffusion_policy_cnn/train_0/checkpoints/latest.ckpt -o data/pusht_eval_output
+
+python eval.py --checkpoint /home/ns1254/diffusion_policy/data/outputs/official/epoch=2000-test_mean_score=1.000.ckpt -o data/can_off_eval_output
+
+
+python eval.py \
+    --checkpoint /home/ns1254/diffusion_policy/data/outputs/can_mh_img1/checkpoints/epoch=0260-test_mean_score=0.820.ckpt\
+    -o data/can_mh_img1_eval_is_output_260 \
+    -istates /home/ns1254/diffusion_policy/init_states/init_states_can_mh_image_abs_300.npz \
+    -n 100 \
+    --save_rollout
+
+
 """
 
 import sys
@@ -17,6 +29,7 @@ import dill
 import wandb
 import json
 from diffusion_policy.workspace.base_workspace import BaseWorkspace
+import numpy as np
 
 @click.command()
 @click.option('-c', '--checkpoint', required=True)
@@ -24,7 +37,9 @@ from diffusion_policy.workspace.base_workspace import BaseWorkspace
 @click.option('-d', '--device', default='cuda:0')
 @click.option('-s', '--seed', default=None, type=int)
 @click.option('-save_rollout', '--save_rollout', default=False, is_flag=True)
-def main(checkpoint, output_dir, device, seed, save_rollout):
+@click.option('-istates', '--istates', default=None, type=str)
+@click.option('-n', '--n_envs', default=None, type=int)
+def main(checkpoint, output_dir, device, seed, save_rollout, istates, n_envs):
     if os.path.exists(output_dir):
         click.confirm(f"Output path {output_dir} already exists! Overwrite?", abort=True)
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -43,26 +58,37 @@ def main(checkpoint, output_dir, device, seed, save_rollout):
     
     # get policy from workspace
     policy = workspace.model
-
     if hasattr(cfg.training, "use_ema"):
         if cfg.training.use_ema:
             policy = workspace.ema_model
     else:
         # print('not exist')
         pass
-
     
     device = torch.device(device)
     policy.to(device)
     policy.eval()
-    
-    # run eval
-    env_runner = hydra.utils.instantiate(
-        cfg.task.env_runner,
-        output_dir=output_dir)
+
+
+    if istates is not None: 
+        init_states = np.load(istates)['init_states']
+        cfg_te={key:value for key,value in cfg.task.env_runner.items()}
+        cfg_te['init_states'] = init_states
+        if n_envs is not None:
+            cfg_te['n_envs']=100
+
+        env_runner = hydra.utils.instantiate(
+            cfg_te,
+            output_dir=output_dir)
+
+    else: 
+        # run eval
+        env_runner = hydra.utils.instantiate(
+            cfg.task.env_runner,
+            output_dir=output_dir)
     
 
-    kwargs={'epoch':111111, 'save_rollout':save_rollout}
+    kwargs={'epoch':'inference', 'save_rollout':save_rollout}
     runner_log = env_runner.run(policy, kwargs=kwargs)
     
     # dump log to json
