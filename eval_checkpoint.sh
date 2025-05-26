@@ -2,6 +2,11 @@
 set -euo pipefail
 
 BASE_PATH="$1"  # path to either a .ckpt file or a directory
+# DATASET_PATH="$2"  # path to the dataset file (optional)
+DATASET_PATH="${2:-}"  # set to empty string if not provided
+
+
+
 echo "BASE_PATH: $BASE_PATH"
 
 # Initialize
@@ -39,6 +44,7 @@ TARGET_DIR="$CKPT_DIR/$CKPT_NAME"
 
 if [ -e "$TARGET_DIR" ]; then
     echo "Directory already exists: $TARGET_DIR"
+    exit 1
 else
     mkdir -p "$TARGET_DIR"
     echo "Created directory: $TARGET_DIR"
@@ -46,7 +52,7 @@ fi
 
 # (Continue with whatever you need to do inside $TARGET_DIR…)
 
-
+echo "running with seeds ... "
 
 SEEDS=(42 43 44)
 # SEEDS=(17 42 43 100 911 1000 4999 7919 40000 100000)
@@ -66,11 +72,26 @@ for SEED in "${SEEDS[@]}"; do
     OUTPUT_DIR="${TARGET_DIR}/seed${SEED}"
     echo "Running evaluation with seed ${SEED}, output will be saved to ${OUTPUT_DIR}"
 
-    python eval.py \
-        --checkpoint "$CHECKPOINT_PATH" \
-        -o "$OUTPUT_DIR" \
-        --seed "$SEED" \
-        --save_rollout
+
+    if [ -z "$DATASET_PATH" ]; then
+        echo "DATASET_PATH is empty"
+        python eval.py \
+            --checkpoint "$CHECKPOINT_PATH" \
+            -o "$OUTPUT_DIR" \
+            --seed "$SEED" \
+            --save_rollout
+    else
+        echo "using DATASET_PATH: $DATASET_PATH"
+        python eval.py \
+            --checkpoint "$CHECKPOINT_PATH" \
+            -o "$OUTPUT_DIR" \
+            --seed "$SEED" \
+            --dataset_path "$DATASET_PATH" \
+            --save_rollout
+    fi
+
+
+
 
     SCORE=$(jq -r '."test/mean_score"' "${OUTPUT_DIR}/eval_log.json")
     
@@ -96,3 +117,6 @@ stats=$(printf "%s\n" "${SCORE_LIST[@]}" | awk '
 echo "$stats" >> "$SCORES_FILE"
 
 echo "All evaluations completed. Summary saved to ${SCORES_FILE}"
+
+
+# ./eval_checkpoint.sh /home/ns1254/diffusion_policy/data/dp_logs/can_bc_mh_img_better/checkpoints/epoch=0020-test_mean_score=0.840.ckpt
