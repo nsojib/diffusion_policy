@@ -76,7 +76,7 @@ def rollout_to_hdf5(rollout_dir, env_args, model_file, dataset_save_dir=None):
     f_sub.close()
 
 
-def main(training_path):
+def main(training_path, dataset_path=None):
     checkpoint_path = os.path.join(training_path, "checkpoints")
     rollout_path = os.path.join(training_path, "rollouts")
 
@@ -87,11 +87,12 @@ def main(training_path):
     config = yaml.safe_load(config)
 
     dataset_type=None 
-    dataset_path=None  
-    if 'dataset_path' in config['task']['dataset']:
-        dataset_path = config['task']['dataset']['dataset_path']
-    if 'zarr_path' in config['task']['dataset']:
-        dataset_path = config['task']['dataset']['zarr_path'] 
+    
+    if dataset_path is None:
+        if 'dataset_path' in config['task']['dataset']:
+            dataset_path = config['task']['dataset']['dataset_path']
+        if 'zarr_path' in config['task']['dataset']:
+            dataset_path = config['task']['dataset']['zarr_path'] 
 
     if '.hdf5' in dataset_path:
         dataset_type = 'hdf5'
@@ -122,7 +123,12 @@ def main(training_path):
 if __name__ == "__main__":
     argparse = argparse.ArgumentParser()
     argparse.add_argument("--training_path", type=str, required=True, help="Path to the training directory")
+    argparse.add_argument("--dataset_path", type=str, default=None, help="Path to the dataset (if applicable)")
     args = argparse.parse_args() 
-    main(args.training_path)
+    main(args.training_path, args.dataset_path)
 
 # python save_training_rollouts.py --training_path /root/diffusion_policy/data/outputs/2025.05.18/01.22.32_train_diffusion_unet_lowdim_pusht_lowdim
+
+# python save_training_rollouts.py \
+#     --training_path /home/ns1254/diffusion_policy/data/dp_logs/can_bc_mh_img_better\
+#     --dataset_path /home/ns1254/diffusion_policy/data/robomimic/datasets/can/mh/image.hdf5
