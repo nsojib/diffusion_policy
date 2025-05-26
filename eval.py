@@ -6,11 +6,19 @@ python eval.py --checkpoint /home/ns1254/diffusion_policy/data/outputs/official/
 
 
 python eval.py \
-    --checkpoint /home/ns1254/diffusion_policy/data/outputs/can_mh_img1/checkpoints/epoch=0260-test_mean_score=0.820.ckpt\
-    -o data/can_mh_img1_eval_is_output_260 \
+    --checkpoint /home/ns1254/diffusion_policy/data/outputs/can_mh_img1/checkpoints/epoch=0220-test_mean_score=0.860.ckpt\
+    -o data/can_mh_img1_eval_is_output_220 \
     -istates /home/ns1254/diffusion_policy/init_states/init_states_can_mh_image_abs_300.npz \
     -n 100 \
     --save_rollout
+
+
+python eval.py \
+    --checkpoint /home/ns1254/diffusion_policy/data/dp_logs/can_bc_mh_img_better/checkpoints/epoch=0020-test_mean_score=0.840.ckpt\
+    -o data/can_bc_mh_img_better \
+    --dataset_path /home/ns1254/diffusion_policy/data/robomimic/datasets/can/mh/image.hdf5 \
+    --save_rollout
+
 
 
 """
@@ -39,7 +47,8 @@ import numpy as np
 @click.option('-save_rollout', '--save_rollout', default=False, is_flag=True)
 @click.option('-istates', '--istates', default=None, type=str)
 @click.option('-n', '--n_envs', default=None, type=int)
-def main(checkpoint, output_dir, device, seed, save_rollout, istates, n_envs):
+@click.option('--dataset_path', default=None, type=str, help='Path to dataset if needed')
+def main(checkpoint, output_dir, device, seed, save_rollout, istates, n_envs, dataset_path):
     if os.path.exists(output_dir):
         click.confirm(f"Output path {output_dir} already exists! Overwrite?", abort=True)
     pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -69,23 +78,23 @@ def main(checkpoint, output_dir, device, seed, save_rollout, istates, n_envs):
     policy.to(device)
     policy.eval()
 
+    # dataset_path = cfg.task.env_runner.dataset_path
+    cfg_te={key:value for key,value in cfg.task.env_runner.items()}
+    if dataset_path is not None:
+        cfg_te['dataset_path'] = dataset_path
 
     if istates is not None: 
-        init_states = np.load(istates)['init_states']
-        cfg_te={key:value for key,value in cfg.task.env_runner.items()}
+        init_states = np.load(istates)['init_states'] 
         cfg_te['init_states'] = init_states
-        if n_envs is not None:
-            cfg_te['n_envs']=100
 
-        env_runner = hydra.utils.instantiate(
-            cfg_te,
-            output_dir=output_dir)
+    if n_envs is not None:
+        cfg_te['n_envs']=n_envs 
 
-    else: 
-        # run eval
-        env_runner = hydra.utils.instantiate(
-            cfg.task.env_runner,
-            output_dir=output_dir)
+    
+    # run eval
+    env_runner = hydra.utils.instantiate(
+        cfg_te,
+        output_dir=output_dir)
     
 
     kwargs={'epoch':'inference', 'save_rollout':save_rollout}
