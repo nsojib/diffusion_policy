@@ -31,6 +31,45 @@ def annotate_points(ax, x, y, idxs, va='top'):
                     fontsize='small',
                     fontweight='bold')  
 
+def read_3seed_sr(fn_3seed):
+    with open(fn_3seed, "r") as f:
+        lines=f.readlines()
+    sr=eval(lines[4].strip().split(",")[1].strip())
+    return sr
+
+
+def read_3seed_sr_from_log(checkpoint_dir):
+
+    files=os.listdir(checkpoint_dir) 
+    files=[f for f in files if os.path.isdir(os.path.join(checkpoint_dir, f)) and f.startswith("epoch=")]
+
+    logdir = str(os.path.dirname(checkpoint_dir)).split('/')[-1]
+    print(f"Log directory: {logdir}")
+
+    sr_info={}
+    for filename in files:
+        fn_3seed=os.path.join(checkpoint_dir, filename, "eval_scores.txt")
+        sr=read_3seed_sr(fn_3seed)
+        training_time_sr = eval( filename.split("=")[-1].strip() )
+        epoch = int(filename.split("=")[1].split("-")[0].strip())
+        # print(f"Epoch: {epoch}, training time SR: {training_time_sr}, 3 seed SR: {sr}")
+        sr_info[epoch] = {
+            'training_time_sr': training_time_sr,
+            '3seed_sr': sr
+        }
+
+    epochs = np.array( sorted(sr_info.keys()) )
+    print('Epochs sr3:', epochs)
+    return sr_info
+    # epochs = np.array( sorted(sr_info.keys()) )
+    # training_time_sr =np.array(  [sr_info[e]['training_time_sr'] for e in epochs] )
+    # test_time_sr = np.array( [sr_info[e]['3seed_sr'] for e in epochs] )
+    # print(f"Number of epochs: {len(sr_info)}")
+    # print(f"Epochs: {sorted(sr_info.keys())}")
+    # print(f"Training time SR: {training_time_sr}")
+    # print(f"Test time SR: {test_time_sr}")
+    # return epochs, training_time_sr, test_time_sr 
+
 
 def main(log_fn, topk):
     print(f"Loading log file: {log_fn}")
@@ -40,6 +79,13 @@ def main(log_fn, topk):
             logs.append(json.loads(line))
     
     print(f"Number of logs: {len(logs)}")
+
+    logdir = str(os.path.dirname(log_fn)).split('/')[-1]
+    print(f"Log directory: {logdir}")
+    # return 
+
+    checkpoint_dir = os.path.join(os.path.dirname(log_fn), "checkpoints")
+    sr_info= read_3seed_sr_from_log(checkpoint_dir)
 
 
     epoch_info={}
@@ -53,6 +99,8 @@ def main(log_fn, topk):
                 'test/mean_score': log['test/mean_score'],
                 'train_action_mse_error': log['train_action_mse_error']
             }
+            epoch_info[epoch]['training_time_sr'] = sr_info[epoch]['training_time_sr']
+            epoch_info[epoch]['test_time_sr'] = sr_info[epoch]['3seed_sr']
 
     print(f"Number of epochs: {len(epoch_info)}") 
     print(f"Epochs: {sorted(epoch_info.keys())}")
@@ -64,13 +112,16 @@ def main(log_fn, topk):
     test_score  =np.array(  [epoch_info[e]['test/mean_score']  for e in epochs] )
     action_mse = np.array( [epoch_info[e]['train_action_mse_error'] for e in epochs] )
 
+    training_time_sr3 = np.array( [epoch_info[e]['training_time_sr'] for e in epochs] )
+    test_time_sr3 = np.array( [epoch_info[e]['test_time_sr'] for e in epochs] )
+
      
     idsx_val_min = np.argsort(val_loss)[:topk]
     idsx_test_max= np.argsort(test_score)[::-1][:topk] 
 
 
 
-    fig, axs = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
+    fig, axs = plt.subplots(4, 1, figsize=(10, 6), sharex=True)
 
     # 1. Loss vs Epoch
     axs[0].plot(epochs, train_loss, label='Train Loss', linestyle='-')
@@ -93,7 +144,7 @@ def main(log_fn, topk):
     axs[0].set_ylabel('Loss')
     axs[0].legend(loc='upper right', fontsize='small', ncol=2)
     axs[0].grid(alpha=0.7)
-    axs[0].set_ylim(-0.01, 0.25)
+    # axs[0].set_ylim(-0.01, 0.25)
 
     # 2. Mean Score vs Epoch
     axs[1].plot(epochs, train_score, label='Train Mean Score', linestyle='-')
@@ -136,13 +187,43 @@ def main(log_fn, topk):
     axs[2].grid(alpha=0.7)
     axs[2].set_ylim(-0.01, 0.04)
 
+
+    idsx_test3_max= np.argsort(test_time_sr3)[::-1][:topk] 
+    # 4. SR vs Epoch
+    axs[3].plot(epochs, training_time_sr3, label='Training Time SR', linestyle='-')
+    axs[3].plot(epochs, test_time_sr3, label='Test Time SR', linestyle='--')
+    axs[3].scatter(epochs, training_time_sr3, color='tab:blue',  s=10, alpha=0.5)
+    axs[3].scatter(epochs, test_time_sr3,  color='tab:orange',s=10, alpha=0.5)
+    # highlight_extrema(axs[3], epochs, training_time_sr3, 'tab:blue',  '*', 'Train')
+    highlight_extrema(axs[3], epochs, test_time_sr3,  'tab:orange','X', 'Test')
+    # axs[3].scatter(epochs[idsx_val_min], training_time_sr3[idsx_val_min],
+    #             color='tab:blue', s=100, marker='v', edgecolor='k')
+    axs[3].scatter(epochs[idsx_test3_max], test_time_sr3[idsx_test3_max],
+                color='tab:orange', s=100, marker='^', edgecolor='k')
+    # annotate_points(axs[3], epochs, training_time_sr3, idsx_val_min, va='top')
+
+
+    
+    annotate_points(axs[3], epochs, test_time_sr3, idsx_test3_max, va='top')
+
+
+    # axs[3].scatter(epochs[idsx_test_max], test_score[idsx_test_max],
+    #             color='tab:green', s=100, marker='^', edgecolor='k') 
+
+
+
+    axs[3].set_ylabel('SR3')
+    axs[3].set_xlabel('Epoch')
+    axs[3].legend(loc='lower right', fontsize='small', ncol=2)
+    axs[3].grid(alpha=0.7)
+
     # Final formatting
     plt.xticks(epochs, rotation=45)
     plt.tight_layout()
 
 
     base_path = os.path.dirname(log_fn)
-    save_path = os.path.join(base_path, "log_view.png")
+    save_path = os.path.join(base_path, f"{logdir}_log_view_sr3.png")
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     # plt.close()
 
@@ -161,10 +242,12 @@ if __name__ == "__main__":
 
 
 
-# python log2plot.py --log_fn /home/ns1254/diffusion_policy/data/dp_logs/coffee1/logs.json.txt 
-# python log2plot.py --log_fn /home/ns1254/diffusion_policy/data/dp_logs/coffee2/logs.json.txt 
-# python log2plot.py --log_fn /home/ns1254/diffusion_policy/data/dp_logs/coffee3/logs.json.txt
+# python log2plot.py --log_fn /home/carl_lab/ns/diffusion_policy/data/outputs/can_img_bc_b/logs.json.txt 
+# python log2plot.py --log_fn /home/carl_lab/ns/diffusion_policy/data/outputs/can_img_bc_w/logs.json.txt 
+# python log2plot.py --log_fn /home/carl_lab/ns/diffusion_policy/data/outputs/can_img_bc_wb/logs.json.txt
 
-# python log2plot.py --log_fn /home/ns1254/diffusion_policy/data/dp_logs/kitchen1/logs.json.txt
+# python log2plot.py --log_fn /home/carl_lab/ns/diffusion_policy/data/outputs/lift_img_bc_b/logs.json.txt 
+# python log2plot.py --log_fn /home/carl_lab/ns/diffusion_policy/data/outputs/lift_img_bc_w/logs.json.txt 
+# python log2plot.py --log_fn /home/carl_lab/ns/diffusion_policy/data/outputs/lift_img_bc_wb/logs.json.txt
 
 

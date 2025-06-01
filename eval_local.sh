@@ -15,6 +15,8 @@
 
 # echo "All files processed."
 
+# sudo apt-get install jq
+
 BASE_PATH="/home/ns1254/diffusion_policy/data/outputs/can_mh_img1/checkpoints/"
 for file in "$BASE_PATH"/*.ckpt; do
     [ -e "$file" ] || continue
