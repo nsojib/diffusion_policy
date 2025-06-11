@@ -35,8 +35,11 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
             seed=42,
             val_ratio=0.0,
             max_train_episodes=None,
-            hdf5_filter_key=None
+            hdf5_filter_key=None,
+            remove_demos=[],
         ):
+         
+
         obs_keys = list(obs_keys)
         rotation_transformer = RotationTransformer(
             from_rep='axis_angle', to_rep=rotation_rep)
@@ -50,6 +53,12 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
                 demo_names = [b.decode('utf-8') for b in file['mask'][hdf5_filter_key]]
 
             print(f'------------total {len(demo_names)} demos, hdf5_filter_key={hdf5_filter_key}------------')
+
+            if len(remove_demos) > 0:
+                print(f'------------removing {len(remove_demos)} demos------------')
+                demo_names = [name for name in demo_names if name not in remove_demos]
+                print(f'------------after removing, total {len(demo_names)} demos------------')
+            
 
             for i in tqdm(range(len(demo_names)), desc="Loading hdf5 to ReplayBuffer"):
                 # demo = demos[f'demo_{i}']
