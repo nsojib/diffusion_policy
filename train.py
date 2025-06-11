@@ -14,6 +14,7 @@ from omegaconf import OmegaConf
 import pathlib
 from diffusion_policy.workspace.base_workspace import BaseWorkspace
 import os 
+import json 
 
 # allows arbitrary python code execution in configs using the ${eval:''} resolver
 OmegaConf.register_new_resolver("eval", eval, replace=True)
@@ -33,6 +34,7 @@ def main(cfg: OmegaConf):
         save_rollout = cfg.save_rollout 
     print("save_rollout", save_rollout)
 
+    #---------------remove demos: BED mask-------------------- 
     mask_fn= None
     if hasattr(cfg, 'mask_fn'):
         mask_fn = cfg.mask_fn
@@ -49,12 +51,35 @@ def main(cfg: OmegaConf):
             remove_demos = [line.strip() for line in f.readlines()]
     print("remove_demos=", remove_demos)
 
+    #---------------OR remove segments: GiB mask--------------------
+    #note: the data needs to have add_uids.py
+    segments_toremove_file = ""
+    if hasattr(cfg, 'segments_toremove_file'):
+        segments_toremove_file = cfg.segments_toremove_file
+        if segments_toremove_file is None:
+            segments_toremove_file=""
+        
+    if os.path.exists(segments_toremove_file):
+        print('using segs file: ', segments_toremove_file)
+        with open(segments_toremove_file, 'r') as f:
+            data = json.load(f) 
+        segs_toremove = data['data'] 
+    else:
+        segs_toremove = {}  
+    
+    print(f"segs_toremove: {segs_toremove}") 
 
+    if len(segs_toremove)>1:
+        print('Fresh loading without cache...')
+        cfg.task.dataset.use_cache = False
+
+    # workspace: BaseWorkspace = cls(cfg, segs_toremove=segs_toremove)
+    # workspace.run() 
 
     cls = hydra.utils.get_class(cfg._target_)
     workspace: BaseWorkspace = cls(cfg)
     # workspace.run()
-    workspace.run(save_rollout=save_rollout, remove_demos=remove_demos)
+    workspace.run(save_rollout=save_rollout, remove_demos=remove_demos, segs_toremove=segs_toremove)
 
 if __name__ == "__main__":
     main()

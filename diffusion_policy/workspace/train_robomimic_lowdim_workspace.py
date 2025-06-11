@@ -26,9 +26,33 @@ from diffusion_policy.env_runner.base_lowdim_runner import BaseLowdimRunner
 from diffusion_policy.common.checkpoint_util import TopKCheckpointManager
 from diffusion_policy.common.json_logger import JsonLogger
 from diffusion_policy.common.pytorch_util import dict_apply, optimizer_to
-
+from torch.utils.data import DataLoader, Sampler 
 
 OmegaConf.register_new_resolver("eval", eval, replace=True)
+
+
+class CustomIndicesSampler(Sampler):
+    def __init__(self, custom_indices):
+        self.custom_indices = np.random.permutation(custom_indices)
+
+    def __iter__(self): 
+        return iter(self.custom_indices)
+
+    def __len__(self):
+        return len( self.custom_indices )
+
+def parse_1_data(data):
+    """ 
+    data: at time t from dataset.
+    #each timestamp can contain multiple uid because of obs_horizon
+    """
+    if 'demo_no' not in data['obs']:
+        raise Exception("Please add demo_no and index_in_demo to the obs first.")
+    
+    demo_nos = data['obs']['demo_no']
+    indices_in_demo = data['obs']['index_in_demo']
+    return demo_nos, indices_in_demo
+
 
 class TrainRobomimicLowdimWorkspace(BaseWorkspace):
     include_keys = ['global_step', 'epoch']
@@ -49,7 +73,7 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
         self.global_step = 0
         self.epoch = 0
 
-    def run(self, save_rollout=False, remove_demos=[]):
+    def run(self, save_rollout=False, remove_demos=[], segs_toremove={}):
         cfg = copy.deepcopy(self.cfg)
 
         # resume training
@@ -65,11 +89,77 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
 
         cfg_dataset={key: value for key, value in cfg.task.dataset.items() }
         cfg_dataset['remove_demos'] = remove_demos
-        dataset= hydra.utils.instantiate(cfg_dataset)
+        # dataset= hydra.utils.instantiate(cfg_dataset)
 
 
-        assert isinstance(dataset, BaseLowdimDataset)
-        train_dataloader = DataLoader(dataset, **cfg.dataloader)
+        self.remove_ids={}                    # all the ids to remove for the key
+        self.segs_toremove = segs_toremove    #[start,end]
+
+        for key in segs_toremove.keys():
+            segs = segs_toremove[key]
+            ids = [] 
+            for start, end in segs:
+                ids.extend(range(start, end + 1))  # Include the end value
+            self.remove_ids[key]=ids
+
+
+
+        # assert isinstance(dataset, BaseLowdimDataset)
+        # train_dataloader = DataLoader(dataset, **cfg.dataloader)
+
+
+        if len(self.remove_ids)==0:
+            print('---------******--------full traj dataset---------******--------')
+            dataset = hydra.utils.instantiate(cfg.task.dataset)
+            assert isinstance(dataset, BaseLowdimDataset)
+            train_dataloader = DataLoader(dataset, **cfg.dataloader) 
+        else:
+            print('---------++++++++--------partial traj dataset---------++++++++--------')
+            # -----------------start of partial traj dataloader ----------------------- 
+            new_config = {key: value for key, value in cfg.task.dataset.items()}
+            # new_config['dataset_path'] = dataset_path
+            # new_config['dataset_filter_key'] = dataset_filter_key 
+            # del new_config["n_demo"] 
+            obs_shape_meta_config = {key: value for key, value in new_config['shape_meta']['obs'].items()}
+            obs_shape_meta_config['demo_no'] = {'shape': [], 'type': 'low_dim'}
+            obs_shape_meta_config['index_in_demo'] = {'shape': [], 'type': 'low_dim'}
+            new_config['shape_meta']['obs'] = obs_shape_meta_config
+ 
+            dataset = hydra.utils.instantiate(new_config)
+            assert isinstance(dataset, BaseLowdimDataset)
+
+
+            valid_indices =[]  #in the dataset.
+            print('generating valid indices ...')
+            for index in tqdm( range(len(dataset)) ):
+                data = dataset.__getitem__(index)
+                demo_no, indices_in_demo = parse_1_data(data) 
+
+                assert torch.all( demo_no[0]==demo_no[1] )                 #obs history from same demo
+                demo_name=f'demo_{int(demo_no[0])}'
+                ids = indices_in_demo.numpy().astype(int)
+                
+                should_remove = False
+                if demo_name in self.remove_ids:
+                    should_remove = bool(set(self.remove_ids[demo_name]) & set(ids))
+                if should_remove: continue 
+                valid_indices.append(index)
+
+            print(f'Valid indices: {len(valid_indices)} / {len(dataset)} ')
+            dataset.lowdim_keys.remove('demo_no')
+            dataset.lowdim_keys.remove('index_in_demo')  # remove the added helper keys (demo_no and index in demo)
+
+            sampler = CustomIndicesSampler(valid_indices)
+            new_config = {key:value for key,value in cfg.dataloader.items()}
+            new_config['shuffle'] = False
+            new_config['sampler'] = sampler 
+            
+            train_dataloader = DataLoader(dataset, **new_config) 
+            # -----------------end of partial traj dataloader -----------------------
+
+
+
+
         normalizer = dataset.get_normalizer()
 
         # configure validation dataset
