@@ -114,51 +114,51 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
             assert isinstance(dataset, BaseLowdimDataset)
             train_dataloader = DataLoader(dataset, **cfg.dataloader) 
         else:
-            print('---------++++++++--------partial traj dataset---------++++++++--------')
-            # -----------------start of partial traj dataloader ----------------------- 
-            new_config = {key: value for key, value in cfg.task.dataset.items()}
-            # new_config['dataset_path'] = dataset_path
-            # new_config['dataset_filter_key'] = dataset_filter_key 
-            # del new_config["n_demo"] 
-            obs_shape_meta_config = {key: value for key, value in new_config['shape_meta']['obs'].items()}
-            obs_shape_meta_config['demo_no'] = {'shape': [], 'type': 'low_dim'}
-            obs_shape_meta_config['index_in_demo'] = {'shape': [], 'type': 'low_dim'}
-            new_config['shape_meta']['obs'] = obs_shape_meta_config
+            print('---------++++++++--------partial traj dataset---------++++++++--------') 
+            # new_config = {key: value for key, value in cfg.task.dataset.items()} 
+            # new_config['obs_keys'] = {key: value for key, value in new_config['obs_keys'].items()}
+            # obs_shape_meta_config = {key: value for key, value in new_config['obs_keys'].items()}
+            # obs_shape_meta_config['demo_no'] = {'shape': [], 'type': 'low_dim'}
+            # obs_shape_meta_config['index_in_demo'] = {'shape': [], 'type': 'low_dim'}
+            # new_config['obs_keys'] = obs_shape_meta_config
  
-            dataset = hydra.utils.instantiate(new_config)
+
+            dataset = hydra.utils.instantiate(cfg.task.dataset)
+            # dataset = hydra.utils.instantiate(new_config)
             assert isinstance(dataset, BaseLowdimDataset)
 
 
-            valid_indices =[]  #in the dataset.
-            print('generating valid indices ...')
-            for index in tqdm( range(len(dataset)) ):
-                data = dataset.__getitem__(index)
-                demo_no, indices_in_demo = parse_1_data(data) 
+            # valid_indices =[]  #in the dataset.
+            # print('generating valid indices ...')
+            # for index in tqdm( range(len(dataset)) ):
+            #     data = dataset.__getitem__(index)
+            #     demo_no, indices_in_demo = parse_1_data(data) 
 
-                assert torch.all( demo_no[0]==demo_no[1] )                 #obs history from same demo
-                demo_name=f'demo_{int(demo_no[0])}'
-                ids = indices_in_demo.numpy().astype(int)
+            #     assert torch.all( demo_no[0]==demo_no[1] )                 #obs history from same demo
+            #     demo_name=f'demo_{int(demo_no[0])}'
+            #     ids = indices_in_demo.numpy().astype(int)
                 
-                should_remove = False
-                if demo_name in self.remove_ids:
-                    should_remove = bool(set(self.remove_ids[demo_name]) & set(ids))
-                if should_remove: continue 
-                valid_indices.append(index)
+            #     should_remove = False
+            #     if demo_name in self.remove_ids:
+            #         should_remove = bool(set(self.remove_ids[demo_name]) & set(ids))
+            #     if should_remove: continue 
+            #     valid_indices.append(index)
 
-            print(f'Valid indices: {len(valid_indices)} / {len(dataset)} ')
-            dataset.lowdim_keys.remove('demo_no')
-            dataset.lowdim_keys.remove('index_in_demo')  # remove the added helper keys (demo_no and index in demo)
+            # print(f'Valid indices: {len(valid_indices)} / {len(dataset)} ')
+            # dataset.lowdim_keys.remove('demo_no')
+            # dataset.lowdim_keys.remove('index_in_demo')  # remove the added helper keys (demo_no and index in demo)
 
-            sampler = CustomIndicesSampler(valid_indices)
-            new_config = {key:value for key,value in cfg.dataloader.items()}
-            new_config['shuffle'] = False
-            new_config['sampler'] = sampler 
-            
-            train_dataloader = DataLoader(dataset, **new_config) 
+            # sampler = CustomIndicesSampler(valid_indices)
+            # new_config = {key:value for key,value in cfg.dataloader.items()}
+            # new_config['shuffle'] = False
+            # new_config['sampler'] = sampler 
+
+            # train_dataloader = DataLoader(dataset, **new_config) 
+            train_dataloader = DataLoader(dataset, **cfg.dataloader) 
             # -----------------end of partial traj dataloader -----------------------
 
 
-
+        
 
         normalizer = dataset.get_normalizer()
 
