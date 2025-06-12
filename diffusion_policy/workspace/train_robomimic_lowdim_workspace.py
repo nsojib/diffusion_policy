@@ -117,40 +117,30 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
             train_dataloader = DataLoader(dataset, **cfg.dataloader) 
         else:
             print('---------++++++++--------partial traj dataset---------++++++++--------') 
-            new_config = {key: value for key, value in cfg.task.dataset.items()} 
-            # new_config['obs_keys'] = {key: value for key, value in new_config['obs_keys'].items()}
-            # obs_shape_meta_config = {key: value for key, value in new_config['obs_keys'].items()}
-            # obs_shape_meta_config['demo_no'] = {'shape': [], 'type': 'low_dim'}
-            # obs_shape_meta_config['index_in_demo'] = {'shape': [], 'type': 'low_dim'}
-            # new_config['obs_keys'] = obs_shape_meta_config
-            # print('-----------------new_config obs_keys: ', new_config['obs_keys'])
-            new_config['obs_keys'].extend(['demo_no', 'index_in_demo'])  # add helper keys for demo number and index in demo
-
-
-            # dataset = hydra.utils.instantiate(cfg.task.dataset)
-            dataset = hydra.utils.instantiate(new_config)
-            assert isinstance(dataset, BaseLowdimDataset)
-
+            dataset = hydra.utils.instantiate(cfg.task.dataset)
+            assert isinstance(dataset, BaseLowdimDataset) 
 
             valid_indices =[]  #in the dataset.
             print('generating valid indices ...')
             for index in tqdm.tqdm( range(len(dataset)) ):
                 data = dataset.__getitem__(index)
-                demo_no, indices_in_demo = parse_1_data(data) 
+                # demo_no, indices_in_demo = parse_1_data(data) 
+                demo_no=data['demo_no']
+                indices_in_demo=data['index_in_demo']
 
-                assert torch.all( demo_no[0]==demo_no[1] )                 #obs history from same demo
+                if len(demo_no)>1:
+                    assert torch.all( demo_no[0]==demo_no[1] )                 #obs history from same demo
                 demo_name=f'demo_{int(demo_no[0])}'
-                ids = indices_in_demo.numpy().astype(int)
+                ids = indices_in_demo[0].numpy().astype(int)           #TODO: double check
                 
                 should_remove = False
                 if demo_name in self.remove_ids:
-                    should_remove = bool(set(self.remove_ids[demo_name]) & set(ids))
+                    should_remove = bool(set(self.remove_ids[demo_name]) & set(ids.tolist()))
                 if should_remove: continue 
                 valid_indices.append(index)
 
             print(f'Valid indices: {len(valid_indices)} / {len(dataset)} ')
-            dataset.lowdim_keys.remove('demo_no')
-            dataset.lowdim_keys.remove('index_in_demo')  # remove the added helper keys (demo_no and index in demo)
+
 
             sampler = CustomIndicesSampler(valid_indices)
             new_config = {key:value for key,value in cfg.dataloader.items()}
@@ -160,6 +150,7 @@ class TrainRobomimicLowdimWorkspace(BaseWorkspace):
             train_dataloader = DataLoader(dataset, **new_config) 
             # train_dataloader = DataLoader(dataset, **cfg.dataloader) 
             # -----------------end of partial traj dataloader -----------------------
+
 
 
         

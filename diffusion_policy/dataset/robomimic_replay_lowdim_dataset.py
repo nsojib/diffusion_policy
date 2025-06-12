@@ -128,6 +128,21 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
             this_normalizer = get_identity_normalizer_from_stat(stat)
         normalizer['action'] = this_normalizer
         
+
+        fake_normalizer = SingleFieldLinearNormalizer.create_manual(
+            scale=np.ones(1, dtype=np.float32),
+            offset=np.zeros(1, dtype=np.float32),
+            input_stats_dict={
+                'mean': np.zeros(1, dtype=np.float32),
+                'std': np.ones(1, dtype=np.float32),
+                'min': np.zeros(1, dtype=np.float32),
+                'max': np.ones(1, dtype=np.float32)
+            }
+        )
+        normalizer['demo_no'] = fake_normalizer
+        normalizer['index_in_demo'] = fake_normalizer
+
+
         # aggregate obs stats
         obs_stat = array_to_stats(self.replay_buffer['obs'])
 
@@ -161,6 +176,9 @@ def _data_to_obs(raw_obs, raw_actions, obs_keys, abs_action, rotation_transforme
         raw_obs[key] for key in obs_keys
     ], axis=-1).astype(np.float32)
 
+    demo_no= raw_obs['demo_no'] if 'demo_no' in raw_obs else -1
+    index_in_demo = raw_obs['index_in_demo'] if 'index_in_demo' in raw_obs else -1
+
     if abs_action:
         is_dual_arm = False
         if raw_actions.shape[-1] == 14:
@@ -181,6 +199,8 @@ def _data_to_obs(raw_obs, raw_actions, obs_keys, abs_action, rotation_transforme
     
     data = {
         'obs': obs,
-        'action': raw_actions
+        'action': raw_actions,
+        'demo_no': demo_no,
+        'index_in_demo': index_in_demo,
     }
     return data
