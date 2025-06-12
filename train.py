@@ -133,3 +133,10 @@ if __name__ == "__main__":
 #gib
 # python train.py --config-dir="configs" --config-name=config_lowdim_can_mh_bc.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}' +mask_fn=/home/carl_lab/ns/diffusion_policy/data/can_mh_bed_masked_0_60.txt +segments_toremove_file="/home/ns1254/gib/gib_results/gib_can_mh_image/subtask_rm120/segs_index_rm120_gib_can_mh_image.json"
 
+
+
+#image
+# python train.py --config-dir="configs" --config-name=config_image_can_mh_bc.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}'
+
+# python train.py --config-dir="configs" --config-name=config_image_can_mh_bc.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}' +mask_fn=/home/carl_lab/ns/diffusion_policy/data/can_mh_deminf_masked_0_0.78_60.txt
+
