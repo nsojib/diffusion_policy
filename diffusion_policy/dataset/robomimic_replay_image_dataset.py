@@ -45,12 +45,13 @@ class RobomimicReplayImageDataset(BaseImageDataset):
             use_cache=False,
             seed=42,
             val_ratio=0.0,
-            hdf5_filter_key=None
+            hdf5_filter_key=None,
+            remove_demos=[]
         ):
         rotation_transformer = RotationTransformer(
             from_rep='axis_angle', to_rep=rotation_rep)
 
-        if hdf5_filter_key is not None:
+        if hdf5_filter_key is not None or len(remove_demos) > 0:
             use_cache=False             #reload fresh because the filter key can be changed while keeping config intact.
 
         replay_buffer = None
@@ -70,7 +71,8 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                             dataset_path=dataset_path, 
                             abs_action=abs_action, 
                             rotation_transformer=rotation_transformer,
-                            hdf5_filter_key=hdf5_filter_key)
+                            hdf5_filter_key=hdf5_filter_key,
+                            remove_demos=remove_demos)
                         print('Saving cache to disk.')
                         with zarr.ZipStore(cache_zarr_path) as zip_store:
                             replay_buffer.save_to_store(
@@ -92,7 +94,8 @@ class RobomimicReplayImageDataset(BaseImageDataset):
                 dataset_path=dataset_path, 
                 abs_action=abs_action, 
                 rotation_transformer=rotation_transformer,
-                hdf5_filter_key=hdf5_filter_key)
+                hdf5_filter_key=hdf5_filter_key,
+                remove_demos=remove_demos)
 
         rgb_keys = list()
         lowdim_keys = list()
@@ -250,7 +253,7 @@ def _convert_actions(raw_actions, abs_action, rotation_transformer):
 
 
 def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, rotation_transformer, 
-        n_workers=None, max_inflight_tasks=None, hdf5_filter_key=None):
+        n_workers=None, max_inflight_tasks=None, hdf5_filter_key=None, remove_demos=[]):
     if n_workers is None:
         n_workers = multiprocessing.cpu_count()
     if max_inflight_tasks is None:
@@ -280,7 +283,12 @@ def _convert_robomimic_to_replay(store, shape_meta, dataset_path, abs_action, ro
         if hdf5_filter_key is not None:
             demo_names = [b.decode('utf-8') for b in file['mask'][hdf5_filter_key]]
 
-        print(f'------------total {len(demo_names)} demos, hdf5_filter_key={hdf5_filter_key}------------')
+        if len(remove_demos) > 0:
+            print(f'------------removing {len(remove_demos)} demos------------')
+            demo_names = [name for name in demo_names if name not in remove_demos]
+            # print(f'------------after removing, total {len(demo_names)} demos------------')
+
+        print(f'------------total {len(demo_names)} demos, hdf5_filter_key={hdf5_filter_key}-- removed={len(remove_demos)}----------')
 
         
         episode_ends = list()

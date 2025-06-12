@@ -49,7 +49,7 @@ class TrainRobomimicImageWorkspace(BaseWorkspace):
         self.global_step = 0
         self.epoch = 0
 
-    def run(self, save_rollout=False):
+    def run(self, save_rollout=False, remove_demos=[], segs_toremove={}):
         cfg = copy.deepcopy(self.cfg)
 
         # resume training
@@ -61,7 +61,11 @@ class TrainRobomimicImageWorkspace(BaseWorkspace):
 
         # configure dataset
         dataset: BaseImageDataset
-        dataset = hydra.utils.instantiate(cfg.task.dataset)
+        # dataset = hydra.utils.instantiate(cfg.task.dataset)
+        cfg_dataset={key: value for key, value in cfg.task.dataset.items() }
+        cfg_dataset['remove_demos'] = remove_demos
+        dataset= hydra.utils.instantiate(cfg_dataset)
+        
         assert isinstance(dataset, BaseImageDataset)
         train_dataloader = DataLoader(dataset, **cfg.dataloader)
         normalizer = dataset.get_normalizer()
