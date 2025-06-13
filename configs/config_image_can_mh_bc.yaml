@@ -13,7 +13,7 @@ dataloader:
   persistent_workers: false
   pin_memory: true
   shuffle: true
-dataset_obs_steps: 10
+dataset_obs_steps: 1
 exp_name: default
 horizon: 1
 keypoint_visible_rate: 1.0
