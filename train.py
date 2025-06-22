@@ -3,6 +3,9 @@ Usage:
 Training:
 python train.py --config-name=train_diffusion_lowdim_workspace
 """
+#uncomment the following two lines to avoid dataloader killed issue.
+# import multiprocessing as mp
+# mp.set_start_method("spawn", force=True)
 
 import sys
 # use line-buffering for both stdout and stderr
