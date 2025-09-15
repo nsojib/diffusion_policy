@@ -34,35 +34,17 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
             use_legacy_normalizer=False,
             seed=42,
             val_ratio=0.0,
-            max_train_episodes=None,
-            hdf5_filter_key=None,
-            remove_demos=[],
+            max_train_episodes=None
         ):
-         
-
         obs_keys = list(obs_keys)
         rotation_transformer = RotationTransformer(
             from_rep='axis_angle', to_rep=rotation_rep)
 
         replay_buffer = ReplayBuffer.create_empty_numpy()
         with h5py.File(dataset_path) as file:
-            # demos = file['data']
-            demo_names=list(file["data"].keys())
-            
-            if hdf5_filter_key is not None:
-                demo_names = [b.decode('utf-8') for b in file['mask'][hdf5_filter_key]]
-
-            print(f'------------total {len(demo_names)} demos, hdf5_filter_key={hdf5_filter_key}------------')
-
-            if len(remove_demos) > 0:
-                print(f'------------removing {len(remove_demos)} demos------------')
-                demo_names = [name for name in demo_names if name not in remove_demos]
-                print(f'------------after removing, total {len(demo_names)} demos------------')
-            
-
-            for i in tqdm(range(len(demo_names)), desc="Loading hdf5 to ReplayBuffer"):
-                # demo = demos[f'demo_{i}']
-                demo = file['data'][demo_names[i]]
+            demos = file['data']
+            for i in tqdm(range(len(demos)), desc="Loading hdf5 to ReplayBuffer"):
+                demo = demos[f'demo_{i}']
                 episode = _data_to_obs(
                     raw_obs=demo['obs'],
                     raw_actions=demo['actions'][:].astype(np.float32),
@@ -128,21 +110,6 @@ class RobomimicReplayLowdimDataset(BaseLowdimDataset):
             this_normalizer = get_identity_normalizer_from_stat(stat)
         normalizer['action'] = this_normalizer
         
-
-        fake_normalizer = SingleFieldLinearNormalizer.create_manual(
-            scale=np.ones(1, dtype=np.float32),
-            offset=np.zeros(1, dtype=np.float32),
-            input_stats_dict={
-                'mean': np.zeros(1, dtype=np.float32),
-                'std': np.ones(1, dtype=np.float32),
-                'min': np.zeros(1, dtype=np.float32),
-                'max': np.ones(1, dtype=np.float32)
-            }
-        )
-        normalizer['demo_no'] = fake_normalizer
-        normalizer['index_in_demo'] = fake_normalizer
-
-
         # aggregate obs stats
         obs_stat = array_to_stats(self.replay_buffer['obs'])
 
@@ -176,9 +143,6 @@ def _data_to_obs(raw_obs, raw_actions, obs_keys, abs_action, rotation_transforme
         raw_obs[key] for key in obs_keys
     ], axis=-1).astype(np.float32)
 
-    demo_no= raw_obs['demo_no'] if 'demo_no' in raw_obs else -1
-    index_in_demo = raw_obs['index_in_demo'] if 'index_in_demo' in raw_obs else -1
-
     if abs_action:
         is_dual_arm = False
         if raw_actions.shape[-1] == 14:
@@ -199,8 +163,6 @@ def _data_to_obs(raw_obs, raw_actions, obs_keys, abs_action, rotation_transforme
     
     data = {
         'obs': obs,
-        'action': raw_actions,
-        'demo_no': demo_no,
-        'index_in_demo': index_in_demo,
+        'action': raw_actions
     }
     return data

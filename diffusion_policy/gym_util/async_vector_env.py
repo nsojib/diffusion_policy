@@ -186,22 +186,7 @@ class AsyncVectorEnv(VectorEnv):
         _, successes = zip(*[pipe.recv() for pipe in self.parent_pipes])
         self._raise_if_errors(successes)
 
-
-
-    #ns override.
-    def reset(self,kwargs):
-        r"""Reset all sub-environments and return a batch of initial observations.
-
-        Returns
-        -------
-        observations : sample from `observation_space`
-            A batch of observations from the vectorized environment.
-        """
-        self.reset_async(kwargs=kwargs)
-        return self.reset_wait()
-
-
-    def reset_async(self, kwargs=None):
+    def reset_async(self):
         self._assert_is_running()
         if self._state != AsyncState.DEFAULT:
             raise AlreadyPendingCallError(
@@ -211,8 +196,8 @@ class AsyncVectorEnv(VectorEnv):
             )
 
         for pipe in self.parent_pipes:
-            pipe.send(("reset", kwargs))
-        self._state = AsyncState.WAITING_RESET 
+            pipe.send(("reset", None))
+        self._state = AsyncState.WAITING_RESET
 
     def reset_wait(self, timeout=None):
         """
@@ -582,7 +567,7 @@ def _worker(index, env_fn, pipe, parent_pipe, shared_memory, error_queue):
         while True:
             command, data = pipe.recv()
             if command == "reset":
-                observation = env.reset(data)  # ns modify
+                observation = env.reset()
                 pipe.send((observation, True))
             elif command == "step":
                 observation, reward, done, info = env.step(data)
@@ -636,7 +621,7 @@ def _worker_shared_memory(index, env_fn, pipe, parent_pipe, shared_memory, error
         while True:
             command, data = pipe.recv()
             if command == "reset":
-                observation = env.reset(data)  # ns modify
+                observation = env.reset()
                 write_to_shared_memory(
                     index, observation, shared_memory, observation_space
                 )

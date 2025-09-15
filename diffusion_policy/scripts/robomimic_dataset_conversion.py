@@ -20,12 +20,23 @@ from diffusion_policy.common.robomimic_util import RobomimicAbsoluteActionConver
 def worker(x):
     path, idx, do_eval = x
     converter = RobomimicAbsoluteActionConverter(path)
+    # idx = idx+1 #hack for 1 base indexing. (TODO: remove this line)
     if do_eval:
         abs_actions, info = converter.convert_and_eval_idx(idx)
     else:
         abs_actions = converter.convert_idx(idx)
         info = dict()
     return abs_actions, info
+
+# python robomimic_dataset_conversion.py -i /home/carl_lab/data_robomimic/square/mh/image_v141.hdf5 -o /home/carl_lab/data_robomimic/square/mh/image_v141_abs.hdf5 -e /home/carl_lab/data_robomimic/square/mh/tmp
+
+# 
+# python robomimic_dataset_conversion.py -i /home/carl_lab/dataset_mimicgen/square134_2.hdf5 -o /home/carl_lab/dataset_mimicgen/square134_2_abs.hdf5 -e /home/carl_lab/data_robomimic/square/mh/tmp
+# python robomimic_dataset_conversion.py -i /home/carl_lab/dataset_mimicgen/square134_2_0index.hdf5 -o /home/carl_lab/dataset_mimicgen/square134_2_0index_abs.hdf5 -e /home/carl_lab/data_robomimic/square/mh/tmp
+
+# python robomimic_dataset_conversion.py -i /home/carl_lab/dataset_mimicgen/square134_2_g40b30.hdf5 -o /home/carl_lab/dataset_mimicgen/square134_2_g40b30_abs.hdf5 -e /home/carl_lab/data_robomimic/square/mh/tmp
+
+
 
 @click.command()
 @click.option('-i', '--input', required=True, help='input hdf5 path')
@@ -60,7 +71,8 @@ def main(input, output, eval_dir, num_workers):
     with h5py.File(output, 'r+') as out_file:
         for i in tqdm(range(len(converter)), desc="Writing to output"):
             abs_actions, info = results[i]
-            demo = out_file[f'data/demo_{i}']
+            demo = out_file[f'data/demo_{i}']  
+            # demo = out_file[f'data/demo_{i+1}']   #hack for 1 base indexing. (TODO: remove +1)
             demo['actions'][:] = abs_actions
     
     # save eval
