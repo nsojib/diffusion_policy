@@ -33,3 +33,20 @@ def main(cfg: OmegaConf):
 
 if __name__ == "__main__":
     main()
+
+
+# python train.py --config-dir="diffusion_policy/config" \
+#     --config-name=train_robomimic_lowdim_workspace1.yaml \
+#     training.seed=42 \
+#     training.device=cuda:0 \
+#     hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}' \
+#     task='lift_lowdim' \
+#     horizon=1 \
+#     policy.algo_name='bc' \
+#     task.dataset_type='mh' \
+#     training.num_epochs=1200
+
+
+
+    
+#     +task.dataset.hdf5_filter_key='better' \
