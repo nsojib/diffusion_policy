@@ -60,3 +60,13 @@ if __name__ == "__main__":
 #     +task.dataset.hdf5_filter_key='better' \
 #     training.num_epochs=1200
 
+# python train.py --config-dir="diffusion_policy/config" \
+#     --config-name=train_robomimic_image_workspace.yaml \
+#     training.seed=42 \
+#     training.device=cuda:0 \
+#     hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}' \
+#     horizon=1 \
+#     policy.algo_name='bc' \
+#     task.dataset_type='mh' \
+#     +task.dataset.hdf5_filter_key='better' \
+#     training.num_epochs=400
