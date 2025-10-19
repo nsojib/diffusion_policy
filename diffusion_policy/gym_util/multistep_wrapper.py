@@ -86,10 +86,8 @@ class MultiStepWrapper(gym.Wrapper):
         self.done = list()
         self.info = defaultdict(lambda : deque(maxlen=n_obs_steps+1))
     
-    def reset(self, kwargs=None):
-        """Resets the environment using kwargs.""" 
-        self.env.set_kwargs(**kwargs)         #ns: send info to video_recording_wrapper
-
+    def reset(self):
+        """Resets the environment using kwargs."""
         obs = super().reset()
 
         self.obs = deque([obs], maxlen=self.n_obs_steps+1)
@@ -116,15 +114,8 @@ class MultiStepWrapper(gym.Wrapper):
                 and (len(self.reward) >= self.max_episode_steps):
                 # truncation
                 done = True
-            
-            if sum(self.reward) >4:  #ns stop.
-                done = True
-
             self.done.append(done)
             self._add_info(info)
-
-            if done:
-                self.env.stop_now()
 
         observation = self._get_obs(self.n_obs_steps)
         reward = aggregate(self.reward, self.reward_agg_method)

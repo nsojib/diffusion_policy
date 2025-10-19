@@ -58,7 +58,7 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace):
         self.global_step = 0
         self.epoch = 0
 
-    def run(self, save_rollout=False):
+    def run(self):
         cfg = copy.deepcopy(self.cfg)
 
         # resume training
@@ -216,8 +216,7 @@ class TrainDiffusionUnetImageWorkspace(BaseWorkspace):
 
                 # run rollout
                 if (self.epoch % cfg.training.rollout_every) == 0:
-                    kwargs={'epoch':self.epoch, 'save_rollout':save_rollout}
-                    runner_log = env_runner.run(policy, kwargs=kwargs)
+                    runner_log = env_runner.run(policy)
                     # log all
                     step_log.update(runner_log)
 

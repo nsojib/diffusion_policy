@@ -63,12 +63,8 @@ class RobomimicImageRunner(BaseImageRunner):
             past_action=False,
             abs_action=False,
             tqdm_interval_sec=5.0,
-            n_envs=None,
-            init_states=None
+            n_envs=None
         ):
-        """ 
-        init_states: list of initial states for inference
-        """
         super().__init__(output_dir)
 
         if n_envs is None:
@@ -162,24 +158,12 @@ class RobomimicImageRunner(BaseImageRunner):
         env_prefixs = list()
         env_init_fn_dills = list()
 
-        regular_mode_not_inf=True # True =regular mode, False = inferernce mode with given init_states
-        if init_states is not None:
-            regular_mode_not_inf=False
-            if n_envs is None:
-                n_envs = len(init_states)
-            if len(init_states) < n_envs:
-                n_envs = len(init_states)
-            # n_envs = len(init_states)
-            env_fns = [env_fn] * n_envs
-
-        print(f'regular_mode_not_inf: {regular_mode_not_inf}--------------------')
-
-        if not regular_mode_not_inf:
-            # inference mode 
-            for i in range(len(init_states)): 
-                inf_idx = train_start_idx + i
-                enable_render = False
-                init_state = init_states[i]
+        # train
+        with h5py.File(dataset_path, 'r') as f:
+            for i in range(n_train):
+                train_idx = train_start_idx + i
+                enable_render = i < n_train_vis
+                init_state = f[f'data/demo_{train_idx}/states'][0]
 
                 def init_fn(env, init_state=init_state, 
                     enable_render=enable_render):
@@ -190,82 +174,47 @@ class RobomimicImageRunner(BaseImageRunner):
                     env.env.file_path = None
                     if enable_render:
                         filename = pathlib.Path(output_dir).joinpath(
-                            'media', wv.util.generate_id() + "_infinit.mp4")
+                            'media', wv.util.generate_id() + ".mp4")
                         filename.parent.mkdir(parents=False, exist_ok=True)
                         filename = str(filename)
                         env.env.file_path = filename
 
-                    env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                     # switch to init_state reset
                     assert isinstance(env.env.env, RobomimicImageWrapper)
                     env.env.env.init_state = init_state
 
-                env_seeds.append(inf_idx)
-                env_prefixs.append('infinit/')
+                env_seeds.append(train_idx)
+                env_prefixs.append('train/')
                 env_init_fn_dills.append(dill.dumps(init_fn))
+        
+        # test
+        for i in range(n_test):
+            seed = test_start_seed + i
+            enable_render = i < n_test_vis
 
+            def init_fn(env, seed=seed, 
+                enable_render=enable_render):
+                # setup rendering
+                # video_wrapper
+                assert isinstance(env.env, VideoRecordingWrapper)
+                env.env.video_recoder.stop()
+                env.env.file_path = None
+                if enable_render:
+                    filename = pathlib.Path(output_dir).joinpath(
+                        'media', wv.util.generate_id() + ".mp4")
+                    filename.parent.mkdir(parents=False, exist_ok=True)
+                    filename = str(filename)
+                    env.env.file_path = filename
 
-        else:  
-            # train
-            with h5py.File(dataset_path, 'r') as f:
-                for i in range(n_train):
-                    train_idx = train_start_idx + i
-                    enable_render = i < n_train_vis
-                    init_state = f[f'data/demo_{train_idx}/states'][0]
+                # switch to seed reset
+                assert isinstance(env.env.env, RobomimicImageWrapper)
+                env.env.env.init_state = None
+                env.seed(seed)
 
-                    def init_fn(env, init_state=init_state, 
-                        enable_render=enable_render):
-                        # setup rendering
-                        # video_wrapper
-                        assert isinstance(env.env, VideoRecordingWrapper)
-                        env.env.video_recoder.stop()
-                        env.env.file_path = None
-                        if enable_render:
-                            filename = pathlib.Path(output_dir).joinpath(
-                                'media', wv.util.generate_id() + "_train.mp4")
-                            filename.parent.mkdir(parents=False, exist_ok=True)
-                            filename = str(filename)
-                            env.env.file_path = filename
+            env_seeds.append(seed)
+            env_prefixs.append('test/')
+            env_init_fn_dills.append(dill.dumps(init_fn))
 
-                        env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
-                        # switch to init_state reset
-                        assert isinstance(env.env.env, RobomimicImageWrapper)
-                        env.env.env.init_state = init_state
-
-                    env_seeds.append(train_idx)
-                    env_prefixs.append('train/')
-                    env_init_fn_dills.append(dill.dumps(init_fn))
-            
-            # test
-            for i in range(n_test):
-                seed = test_start_seed + i
-                enable_render = i < n_test_vis
-
-                def init_fn(env, seed=seed, 
-                    enable_render=enable_render):
-                    # setup rendering
-                    # video_wrapper
-                    assert isinstance(env.env, VideoRecordingWrapper)
-                    env.env.video_recoder.stop()
-                    env.env.file_path = None
-                    if enable_render:
-                        filename = pathlib.Path(output_dir).joinpath(
-                            'media', wv.util.generate_id() + "_test.mp4")
-                        filename.parent.mkdir(parents=False, exist_ok=True)
-                        filename = str(filename)
-                        env.env.file_path = filename
-
-                    env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
-                    # switch to seed reset
-                    assert isinstance(env.env.env, RobomimicImageWrapper)
-                    env.env.env.init_state = None
-                    env.seed(seed)
-
-                env_seeds.append(seed)
-                env_prefixs.append('test/')
-                env_init_fn_dills.append(dill.dumps(init_fn))
-
-        print(f'--------------total envs: {len(env_fns)}---------')
         env = AsyncVectorEnv(env_fns, dummy_env_fn=dummy_env_fn)
         # env = SyncVectorEnv(env_fns)
 
@@ -286,7 +235,7 @@ class RobomimicImageRunner(BaseImageRunner):
         self.abs_action = abs_action
         self.tqdm_interval_sec = tqdm_interval_sec
 
-    def run(self, policy: BaseImagePolicy, kwargs={}):
+    def run(self, policy: BaseImagePolicy):
         device = policy.device
         dtype = policy.dtype
         env = self.env
@@ -318,7 +267,7 @@ class RobomimicImageRunner(BaseImageRunner):
                 args_list=[(x,) for x in this_init_fns])
 
             # start rollout
-            obs = env.reset(kwargs)  #ns added.
+            obs = env.reset()
             past_action = None
             policy.reset()
 
@@ -370,7 +319,7 @@ class RobomimicImageRunner(BaseImageRunner):
             all_video_paths[this_global_slice] = env.render()[this_local_slice]
             all_rewards[this_global_slice] = env.call('get_attr', 'reward')[this_local_slice]
         # clear out video buffer
-        _ = env.reset(kwargs={})
+        _ = env.reset()
         
         # log
         max_rewards = collections.defaultdict(list)

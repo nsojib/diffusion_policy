@@ -162,13 +162,11 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                     env.env.file_path = None
                     if enable_render:
                         filename = pathlib.Path(output_dir).joinpath(
-                            'media', wv.util.generate_id() + "_train.mp4")
+                            'media', wv.util.generate_id() + ".mp4")
                         filename.parent.mkdir(parents=False, exist_ok=True)
                         filename = str(filename)
                         env.env.file_path = filename
 
-                    # env.env.traj_save_path = pathlib.Path(output_dir).joinpath('trajs', wv.util.generate_id())
-                    env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                     # switch to init_state reset
                     assert isinstance(env.env.env, RobomimicLowdimWrapper)
                     env.env.env.init_state = init_state
@@ -191,13 +189,11 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                 env.env.file_path = None
                 if enable_render:
                     filename = pathlib.Path(output_dir).joinpath(
-                        'media', wv.util.generate_id() + "_test.mp4")
+                        'media', wv.util.generate_id() + ".mp4")
                     filename.parent.mkdir(parents=False, exist_ok=True)
                     filename = str(filename)
                     env.env.file_path = filename
 
-                # env.env.traj_save_path = pathlib.Path(output_dir).joinpath('trajs', wv.util.generate_id())
-                env.env.set_traj_save_path(pathlib.Path(output_dir).joinpath('rollouts', wv.util.generate_id()))
                 # switch to seed reset
                 assert isinstance(env.env.env, RobomimicLowdimWrapper)
                 env.env.env.init_state = None
@@ -229,7 +225,7 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
         self.abs_action = abs_action
         self.tqdm_interval_sec = tqdm_interval_sec
 
-    def run(self, policy: BaseLowdimPolicy, kwargs={}):
+    def run(self, policy: BaseLowdimPolicy):
         device = policy.device
         dtype = policy.dtype
         env = self.env
@@ -261,7 +257,7 @@ class RobomimicLowdimRunner(BaseLowdimRunner):
                 args_list=[(x,) for x in this_init_fns])
 
             # start rollout
-            obs = env.reset(kwargs)  #ns added.
+            obs = env.reset()
             past_action = None
             policy.reset()
 
