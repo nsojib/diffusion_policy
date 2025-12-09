@@ -1,0 +1,16 @@
+{
+	"name": "dp_devcontainer",
+	"image": "ghcr.io/nsojib/diffusion_policy:latest",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+                "ms-python.python",
+				"ms-python.vscode-pylance",
+                "ms-toolsai.jupyter"
+            ],
+		}
+	},
+	"shutdownAction": "none" ,
+
+	"runArgs": ["--ipc","host", "--gpus", "all", "--hostname", "robot_learning"]
+}
